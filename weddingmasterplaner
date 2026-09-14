@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Wedding Planner & Seating Manager</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wedding: {
+                            50: '#fdfbf7',
+                            100: '#f7f2ea',
+                            200: '#eee3d3',
+                            300: '#e1cdb3',
+                            400: '#d1b08c',
+                            500: '#c2976c',
+                            600: '#a87954',
+                            700: '#8a5e42',
+                            800: '#714c39',
+                            900: '#5c3e30',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .round-table {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fefefe, #f3ede2);
+            border: 3px solid #c2976c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+        }
+        .round-table:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .seat {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        /* Positions for up to 10 seats around a circle */
+        .seat-1  { top: -14px; left: 50%; transform: translateX(-50%); }
+        .seat-2  { top: 2px; right: 2px; }
+        .seat-3  { top: 50%; right: -14px; transform: translateY(-50%); }
+        .seat-4  { bottom: 2px; right: 2px; }
+        .seat-5  { bottom: -14px; left: 50%; transform: translateX(-50%); }
+        .seat-6  { bottom: 2px; left: 2px; }
+        .seat-7  { top: 50%; left: -14px; transform: translateY(-50%); }
+        .seat-8  { top: 2px; left: 2px; }
+        .seat-9  { top: 20%; left: -10px; }
+        .seat-10 { top: 20%; right: -10px; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #printable-qr-card, #printable-qr-card * { visibility: visible; }
+            #printable-qr-card { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-wedding-50 text-gray-800 font-sans min-h-screen flex flex-col antialiased">
+
+    <header class="bg-white border-b border-wedding-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-wedding-100 border border-wedding-300 flex items-center justify-center text-wedding-700">
+                        <i class="fa-solid fa-heart text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-serif font-bold text-xl text-wedding-900 leading-tight">Master Wedding Planner</h1>
+                        <p class="text-xs text-wedding-600 font-medium">Checklist Detail & Pengelolaan Meja Bundar (USD)</p>
+                    </div>
+                </div>
+                
+                <!-- Tab Switching Navigation -->
+                <nav class="flex space-x-1 sm:space-x-2 bg-wedding-100/70 p-1 rounded-xl">
+                    <button id="tab-btn-checklist" onclick="switchTab('checklist')" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all text-wedding-900 bg-white shadow-sm">
+                        <i class="fa-solid fa-list-check mr-1.5"></i> Checklist & Budget
+                    </button>
+                    <button id="tab-btn-seating" onclick="switchTab('seating')" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-600 hover:text-wedding-900">
+                        <i class="fa-solid fa-chair mr-1.5"></i> Meja & Tamu (QR)
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+        <!-- Notification Toast Container -->
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 1: MASTER CHECKLIST & BUDGET DETAILS                           -->
+        <!-- =================================================================== -->
+        <section id="section-checklist" class="space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Wedding Date Card -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-wedding-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-wedding-600 uppercase tracking-wider">Tanggal Pernikahan</span>
+                        <i class="fa-regular fa-calendar-days text-wedding-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <input type="date" id="wedding-date" onchange="updateWeddingDate(this.value)" class="w-full text-lg font-bold text-wedding-900 border-b border-dashed border-wedding-300 focus:outline-none focus:border-wedding-600 bg-transparent py-1">
+                    </div>
+                    <div class="mt-2 text-[11px] text-gray-500 flex justify-between">
+                        <span>Hitung Mundur:</span>
+                        <span id="countdown-text" class="font-bold text-wedding-700">-</span>
+                    </div>
+                </div>
+
+                <!-- Total Budget Card -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-wedding-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-wedding-600 uppercase tracking-wider">Total Est. Budget (USD)</span>
+                        <i class="fa-solid fa-wallet text-wedding-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <p id="summary-total-budget" class="text-xl font-bold text-gray-800">$0</p>
+                    </div>
+                    <p class="text-[11px] text-gray-500">Estimasi total seluruh tugas</p>
+                </div>
+
+                <!-- Actual Spend Card -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-wedding-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-wedding-600 uppercase tracking-wider">Pengeluaran Real (USD)</span>
+                        <i class="fa-solid fa-receipt text-wedding-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <p id="summary-total-actual" class="text-xl font-bold text-emerald-700">$0</p>
+                    </div>
+                    <div class="text-[11px] flex justify-between" id="budget-diff-container">
+                        <span class="text-gray-500">Selisih:</span>
+                        <span id="summary-budget-diff" class="font-bold">$0</span>
+                    </div>
+                </div>
+
+                <!-- Overall Progress Card -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-wedding-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-wedding-600 uppercase tracking-wider">Progres Persiapan</span>
+                        <i class="fa-solid fa-chart-line text-wedding-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <span id="summary-progress-percent" class="text-2xl font-bold text-wedding-900">0%</span>
+                            <span id="summary-progress-count" class="text-xs font-medium text-gray-500">0/0 Selesai</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                            <div id="summary-progress-bar" class="bg-wedding-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-wedding-200 overflow-hidden">
+                <!-- Toolbar Header -->
+                <div class="p-4 sm:p-5 border-b border-wedding-100 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-wedding-50/50">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-serif font-bold text-lg text-wedding-900">Rincian Tugas & Budget</h2>
+                        <span id="checklist-count-badge" class="bg-wedding-200 text-wedding-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Filter Phase -->
+                        <select id="filter-phase" onchange="renderChecklist()" class="text-xs bg-white border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                            <option value="ALL">Semua Tahapan Waktu</option>
+                            <option value="H-12">H-12 s/d H-9 Bulan</option>
+                            <option value="H-6">H-6 s/d H-3 Bulan</option>
+                            <option value="H-1">H-1 Bulan s/d H-1 Minggu</option>
+                            <option value="HARI-H">Hari H & Pasca Acara</option>
+                        </select>
+
+                        <!-- Search Box -->
+                        <div class="relative flex-1 sm:w-48">
+                            <input type="text" id="search-checklist" oninput="renderChecklist()" placeholder="Cari tugas atau PIC..." class="w-full text-xs bg-white border border-gray-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
+                        </div>
+
+                        <!-- Add Task Button -->
+                        <button onclick="openAddTaskModal()" class="bg-wedding-600 hover:bg-wedding-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-plus text-xs"></i> Tambah Tugas Manual
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Checklist Table -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-wedding-100/60 text-wedding-900 uppercase text-[11px] font-bold tracking-wider border-b border-wedding-200">
+                            <tr>
+                                <th class="py-3 px-4 w-12 text-center">Status</th>
+                                <th class="py-3 px-4 min-w-[200px]">Detail Tugas / Topik</th>
+                                <th class="py-3 px-4 w-32">Tahapan Waktu</th>
+                                <th class="py-3 px-4 w-36">PIC (Penanggung Jawab)</th>
+                                <th class="py-3 px-4 w-32">Target Deadline</th>
+                                <th class="py-3 px-4 w-32 text-right">Est. Budget ($)</th>
+                                <th class="py-3 px-4 w-32 text-right">Real Pengeluaran ($)</th>
+                                <th class="py-3 px-4 w-20 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="checklist-tbody" class="divide-y divide-gray-100">
+                            <!-- Dynamic checklist items inserted via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: SEATING MANAGEMENT & GUEST QR CODES                        -->
+        <!-- =================================================================== -->
+        <section id="section-seating" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left Sidebar: Guest Form & Category Management -->
+                <div class="space-y-5">
+                    
+                    <!-- Guest Registration Card -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-wedding-200 space-y-4">
+                        <div class="flex justify-between items-center border-b border-wedding-100 pb-3">
+                            <h3 class="font-serif font-bold text-gray-800 text-base">Tambah Tamu Undangan</h3>
+                            <button onclick="openCategoryModal()" class="text-xs font-semibold text-wedding-700 hover:text-wedding-900 bg-wedding-50 hover:bg-wedding-100 px-2.5 py-1 rounded-md border border-wedding-200 transition-colors">
+                                <i class="fa-solid fa-tags text-[10px] mr-1"></i> Kelola Kategori
+                            </button>
+                        </div>
+
+                        <form id="form-add-guest" onsubmit="handleAddGuest(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Tamu / Keluarga</label>
+                                <input type="text" id="guest-name" required placeholder="Contoh: Mr. John & Family" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Jumlah Pax (Orang)</label>
+                                    <input type="number" id="guest-pax" min="1" max="10" value="2" required class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Kategori Tamu</label>
+                                    <select id="guest-category" required class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                                        <!-- Categories populated dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full bg-wedding-600 hover:bg-wedding-700 text-white font-medium py-2 rounded-lg text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-user-plus text-xs"></i> Simpan Tamu
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Add Table Card -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-wedding-200 space-y-4">
+                        <h3 class="font-serif font-bold text-gray-800 text-base border-b border-wedding-100 pb-3">Tambah Meja Bundar</h3>
+                        <form id="form-add-table" onsubmit="handleAddTable(event)" class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nama / Nomor Meja</label>
+                                    <input type="text" id="table-name" required placeholder="Contoh: Table 01" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Kapasitas Kursi</label>
+                                    <select id="table-capacity" required class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                                        <option value="6">6 Kursi</option>
+                                        <option value="8" selected>8 Kursi</option>
+                                        <option value="10">10 Kursi</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 rounded-lg text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-plus text-xs"></i> Tambah Meja Baru
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Unassigned Guest List -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-wedding-200 space-y-3">
+                        <div class="flex justify-between items-center border-b border-wedding-100 pb-2">
+                            <h3 class="font-serif font-bold text-gray-800 text-sm">Daftar Tamu Belum Dapat Meja</h3>
+                            <span id="unassigned-count" class="bg-amber-100 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-full">0 Tamu</span>
+                        </div>
+                        
+                        <div id="unassigned-guest-list" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                            <!-- Unseated guests inserted dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Main Area: Floor Plan & Tables Grid -->
+                <div class="lg:col-span-2 space-y-4">
+                    
+                    <!-- Floor Plan Header & Auto-Assign All Button -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-wedding-200 flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h3 class="font-serif font-bold text-lg text-wedding-900">Denah Visual Meja Bundar</h3>
+                            <p class="text-xs text-gray-500">Klik tombol auto atau tempatkan tamu ke meja yang pas.</p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="autoAssignAllGuests()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Otomatis Atur Semua Meja
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Capacity & Seating Stats Overview -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-wedding-100/60 p-3 rounded-lg border border-wedding-200 text-center">
+                            <span class="block text-[11px] font-semibold text-wedding-700">Total Undangan (Pax)</span>
+                            <span id="stat-total-pax" class="text-lg font-bold text-wedding-900">0</span>
+                        </div>
+                        <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-200 text-center">
+                            <span class="block text-[11px] font-semibold text-emerald-700">Sudah Dapat Meja</span>
+                            <span id="stat-seated-pax" class="text-lg font-bold text-emerald-900">0</span>
+                        </div>
+                        <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 text-center">
+                            <span class="block text-[11px] font-semibold text-amber-700">Sisa Meja Kosong (Pax)</span>
+                            <span id="stat-available-capacity" class="text-lg font-bold text-amber-900">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Round Tables Interactive Grid -->
+                    <div id="floor-plan" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 bg-wedding-100/30 p-6 rounded-xl border border-dashed border-wedding-300 min-h-[400px]">
+                        <!-- Tables rendered dynamically -->
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    
+    <!-- MODAL 1: ADD TASK MANUAL -->
+    <div id="modal-add-task" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 relative">
+            <button onclick="closeAddTaskModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="font-serif font-bold text-lg text-wedding-900 border-b border-gray-100 pb-2">Tambah Tugas / Topik Baru</h3>
+            <form onsubmit="handleAddTask(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Detail Tugas / Topik</label>
+                    <input type="text" id="task-title" required placeholder="Contoh: Fitting Baju Orang Tua" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Tahapan Waktu</label>
+                        <select id="task-phase" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                            <option value="H-12">H-12 s/d H-9 Bulan</option>
+                            <option value="H-6">H-6 s/d H-3 Bulan</option>
+                            <option value="H-1">H-1 Bulan s/d H-1 Minggu</option>
+                            <option value="HARI-H">Hari H & Pasca Acara</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">PIC (Penanggung Jawab)</label>
+                        <input type="text" id="task-pic" placeholder="Contoh: WO / Pengantin" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Target Deadline</label>
+                        <input type="date" id="task-deadline" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Estimasi Budget ($)</label>
+                        <input type="number" id="task-budget" min="0" value="0" class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-wedding-600 hover:bg-wedding-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors">
+                        Simpan Tugas Baru
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: CATEGORY MANAGER -->
+    <div id="modal-category" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 relative">
+            <button onclick="closeCategoryModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="font-serif font-bold text-lg text-wedding-900 border-b border-gray-100 pb-2">Kelola Kategori Tamu</h3>
+            
+            <form onsubmit="handleAddCategory(event)" class="flex gap-2">
+                <input type="text" id="new-cat-name" required placeholder="Nama Kategori Baru" class="flex-1 text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-wedding-500 focus:outline-none">
+                <input type="color" id="new-cat-color" value="#588157" class="w-10 h-9 p-1 rounded-lg border border-gray-300 cursor-pointer">
+                <button type="submit" class="bg-wedding-600 hover:bg-wedding-700 text-white text-xs font-semibold px-3 py-2 rounded-lg">
+                    Tambah
+                </button>
+            </form>
+
+            <div class="border-t border-gray-100 pt-3">
+                <h4 class="text-xs font-bold text-gray-600 mb-2">Kategori Saat Ini:</h4>
+                <div id="category-list-container" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                    <!-- Categories list dynamically rendered -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ASSIGN GUEST TO TABLE -->
+    <div id="modal-assign" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-xs p-5 space-y-4 relative">
+            <button onclick="closeAssignModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="font-serif font-bold text-base text-wedding-900">Pilih Meja Untuk Tamu</h3>
+            <p id="assign-guest-info" class="text-xs text-gray-600 font-medium"></p>
+            
+            <div id="table-select-options" class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
+                <!-- Table options rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: QR CODE CARD & PRINTING -->
+    <div id="modal-qr" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 relative text-center">
+            <button onclick="closeQRModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            
+            <div id="printable-qr-card" class="p-5 border-2 border-wedding-300 rounded-xl bg-wedding-50 text-wedding-900">
+                <div class="flex justify-center items-center gap-2 mb-1">
+                    <i class="fa-solid fa-gem text-wedding-600 text-lg"></i>
+                    <h4 id="qr-modal-title" class="font-serif text-lg font-bold">Kartu Akses Pernikahan</h4>
+                </div>
+                <p id="qr-modal-subtitle" class="text-[11px] text-gray-500 mb-3">Sistem Reservasi Meja Resepsi</p>
+                
+                <!-- QR Container -->
+                <div id="qrcode-container" class="flex justify-center items-center my-3 p-3 bg-white rounded-lg shadow-sm border border-wedding-200 mx-auto w-44 h-44"></div>
+                
+                <div class="mt-3 text-left bg-white p-3 rounded-lg border border-wedding-200 space-y-1">
+                    <p class="text-xs text-gray-600">Nama: <span id="qr-card-name" class="font-bold text-gray-900"></span></p>
+                    <p class="text-xs text-gray-600">Kategori: <span id="qr-card-category" class="font-semibold text-wedding-700"></span></p>
+                    <p class="text-xs text-gray-600">Jumlah Tamu: <span id="qr-card-pax" class="font-bold text-gray-900"></span> Pax</p>
+                    <p class="text-xs text-gray-600">Nomor Meja: <span id="qr-card-table" class="font-extrabold text-wedding-800 text-sm"></span></p>
+                </div>
+            </div>
+
+            <div class="mt-4 flex gap-2">
+                <button onclick="printQRCard()" class="flex-1 bg-wedding-600 hover:bg-wedding-700 text-white py-2 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-print"></i> Cetak / Save PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default initial application data (Converted values to USD)
+        const initialAppState = {
+            weddingDate: "2026-10-24",
+            checklist: [
+                { id: "c1", title: "Menentukan Konsep & Budget Pernikahan", phase: "H-12", pic: "Pengantin", deadline: "2026-01-15", budget: 0, actual: 0, completed: true },
+                { id: "c2", title: "Booking Gedung / Venue Resepsi", phase: "H-12", pic: "Orang Tua & Pengantin", deadline: "2026-02-01", budget: 2500, actual: 2500, completed: true },
+                { id: "c3", title: "Pilih & DP Catering", phase: "H-12", pic: "Orang Tua", deadline: "2026-03-10", budget: 3500, actual: 3400, completed: true },
+                { id: "c4", title: "Booking MUA & Attire Pengantin", phase: "H-6", pic: "Pengantin Wanita", deadline: "2026-05-20", budget: 1000, actual: 1100, completed: false },
+                { id: "c5", title: "Vendor Dekorasi & Lighting", phase: "H-6", pic: "WO / Pengantin", deadline: "2026-06-15", budget: 1800, actual: 1800, completed: false },
+                { id: "c6", title: "Fotografer & Videografer", phase: "H-6", pic: "Pengantin Pria", deadline: "2026-07-01", budget: 900, actual: 0, completed: false },
+                { id: "c7", title: "Cetak & Sebar Undangan (Fisik / Digital)", phase: "H-1", pic: "WO", deadline: "2026-09-15", budget: 250, actual: 0, completed: false },
+                { id: "c8", title: "Finalisasi Pengelolaan Meja & Tamu", phase: "H-1", pic: "WO & Usher", deadline: "2026-10-10", budget: 0, actual: 0, completed: false }
+            ],
+            categories: [
+                { id: "cat1", name: "VIP / Keluarga Inti", color: "#8a5e42" },
+                { id: "cat2", name: "Teman Kantor", color: "#2563eb" },
+                { id: "cat3", name: "Sahabat Sekolah", color: "#059669" },
+                { id: "cat4", name: "Tamu Orang Tua", color: "#d97706" }
+            ],
+            tables: [
+                { id: "t1", name: "Table VIP 01", capacity: 8, seatedGuests: [] },
+                { id: "t2", name: "Table VIP 02", capacity: 8, seatedGuests: [] },
+                { id: "t3", name: "Table 03", capacity: 8, seatedGuests: [] },
+                { id: "t4", name: "Table 04", capacity: 10, seatedGuests: [] }
+            ],
+            guests: [
+                { id: "g1", name: "Mr. Subroto & Family", pax: 2, category: "cat1", tableId: null },
+                { id: "g2", name: "Bima & Partner", pax: 2, category: "cat3", tableId: null },
+                { id: "g3", name: "Office Director Team", pax: 4, category: "cat2", tableId: null }
+            ]
+        };
+
+        // Load data from LocalStorage or initialize default state
+        let appState = JSON.parse(localStorage.getItem('wedding_planner_state')) || initialAppState;
+
+        function saveState() {
+            localStorage.setItem('wedding_planner_state', JSON.stringify(appState));
+        }
+
+        /* Toast notification helper */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 transition-all transform translate-y-2 opacity-0 ${
+                type === 'error' ? 'bg-red-600 text-white' : 'bg-wedding-800 text-white'
+            }`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function switchTab(tab) {
+            const btnChecklist = document.getElementById('tab-btn-checklist');
+            const btnSeating = document.getElementById('tab-btn-seating');
+            const secChecklist = document.getElementById('section-checklist');
+            const secSeating = document.getElementById('section-seating');
+
+            if(tab === 'checklist') {
+                secChecklist.classList.remove('hidden');
+                secSeating.classList.add('hidden');
+                btnChecklist.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all text-wedding-900 bg-white shadow-sm";
+                btnSeating.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-600 hover:text-wedding-900";
+            } else {
+                secChecklist.classList.add('hidden');
+                secSeating.classList.remove('hidden');
+                btnSeating.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all text-wedding-900 bg-white shadow-sm";
+                btnChecklist.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all text-gray-600 hover:text-wedding-900";
+            }
+        }
+
+        function updateWeddingDate(dateVal) {
+            appState.weddingDate = dateVal;
+            saveState();
+            calculateCountdown();
+        }
+
+        function calculateCountdown() {
+            if(!appState.weddingDate) {
+                document.getElementById('countdown-text').innerText = "Belum Diatur";
+                return;
+            }
+            const target = new Date(appState.weddingDate);
+            const now = new Date();
+            const diffTime = target - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if(isNaN(diffDays)) {
+                document.getElementById('countdown-text').innerText = "-";
+            } else if(diffDays > 0) {
+                document.getElementById('countdown-text').innerText = `${diffDays} Hari Lagi`;
+            } else if(diffDays === 0) {
+                document.getElementById('countdown-text').innerText = "HARI INI!";
+            } else {
+                document.getElementById('countdown-text').innerText = "Selesai";
+            }
+        }
+
+        function formatUSD(num) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num || 0);
+        }
+
+        function renderChecklist() {
+            const tbody = document.getElementById('checklist-tbody');
+            const phaseFilter = document.getElementById('filter-phase').value;
+            const searchQuery = document.getElementById('search-checklist').value.toLowerCase();
+
+            tbody.innerHTML = '';
+
+            let totalBudget = 0;
+            let totalActual = 0;
+            let completedCount = 0;
+            let totalTasks = 0;
+
+            appState.checklist.forEach(item => {
+                totalBudget += Number(item.budget || 0);
+                totalActual += Number(item.actual || 0);
+                totalTasks++;
+                if(item.completed) completedCount++;
+
+                // Filter logic
+                if(phaseFilter !== 'ALL' && item.phase !== phaseFilter) return;
+                if(searchQuery && !item.title.toLowerCase().includes(searchQuery) && !(item.pic || '').toLowerCase().includes(searchQuery)) return;
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-wedding-50/50 transition-colors ${item.completed ? 'bg-gray-50/60' : ''}`;
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-center">
+                        <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleTaskStatus('${item.id}')" class="w-4 h-4 text-wedding-600 rounded border-gray-300 focus:ring-wedding-500 cursor-pointer">
+                    </td>
+                    <td class="py-3 px-4 font-medium text-gray-900 ${item.completed ? 'line-through text-gray-400' : ''}">
+                        ${item.title}
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-wedding-100 text-wedding-800 border border-wedding-200">
+                            ${item.phase}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-gray-600 font-medium">${item.pic || '-'}</td>
+                    <td class="py-3 px-4 text-xs text-gray-600">${item.deadline || '-'}</td>
+                    <td class="py-3 px-4 text-xs font-semibold text-right text-gray-700">
+                        <input type="number" value="${item.budget || 0}" onchange="updateTaskFinancial('${item.id}', 'budget', this.value)" class="w-24 text-right bg-transparent border-b border-transparent hover:border-gray-300 focus:border-wedding-600 focus:outline-none">
+                    </td>
+                    <td class="py-3 px-4 text-xs font-semibold text-right text-emerald-700">
+                        <input type="number" value="${item.actual || 0}" onchange="updateTaskFinancial('${item.id}', 'actual', this.value)" class="w-24 text-right bg-transparent border-b border-transparent hover:border-gray-300 focus:border-wedding-600 focus:outline-none">
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="deleteTask('${item.id}')" class="text-gray-400 hover:text-red-500 transition-colors px-1" title="Hapus Tugas">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Update Summary Cards
+            document.getElementById('summary-total-budget').innerText = formatUSD(totalBudget);
+            document.getElementById('summary-total-actual').innerText = formatUSD(totalActual);
+            
+            const diff = totalBudget - totalActual;
+            const diffEl = document.getElementById('summary-budget-diff');
+            if (diff >= 0) {
+                diffEl.innerText = `Hemat ${formatUSD(diff)}`;
+                diffEl.className = "font-bold text-emerald-600";
+            } else {
+                diffEl.innerText = `Over ${formatUSD(Math.abs(diff))}`;
+                diffEl.className = "font-bold text-red-600";
+            }
+
+            const percent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+            document.getElementById('summary-progress-percent').innerText = `${percent}%`;
+            document.getElementById('summary-progress-count').innerText = `${completedCount}/${totalTasks} Selesai`;
+            document.getElementById('summary-progress-bar').style.width = `${percent}%`;
+            document.getElementById('checklist-count-badge').innerText = totalTasks;
+        }
+
+        function toggleTaskStatus(id) {
+            const task = appState.checklist.find(t => t.id === id);
+            if(task) {
+                task.completed = !task.completed;
+                saveState();
+                renderChecklist();
+            }
+        }
+
+        function updateTaskFinancial(id, field, value) {
+            const task = appState.checklist.find(t => t.id === id);
+            if(task) {
+                task[field] = Number(value || 0);
+                saveState();
+                renderChecklist();
+            }
+        }
+
+        function deleteTask(id) {
+            appState.checklist = appState.checklist.filter(t => t.id !== id);
+            saveState();
+            renderChecklist();
+            showToast("Tugas berhasil dihapus");
+        }
+
+        function openAddTaskModal() {
+            document.getElementById('modal-add-task').classList.remove('hidden');
+            document.getElementById('modal-add-task').classList.add('flex');
+        }
+
+        function closeAddTaskModal() {
+            document.getElementById('modal-add-task').classList.add('hidden');
+            document.getElementById('modal-add-task').classList.remove('flex');
+        }
+
+        function handleAddTask(e) {
+            e.preventDefault();
+            const title = document.getElementById('task-title').value.trim();
+            const phase = document.getElementById('task-phase').value;
+            const pic = document.getElementById('task-pic').value.trim();
+            const deadline = document.getElementById('task-deadline').value;
+            const budget = Number(document.getElementById('task-budget').value || 0);
+
+            if(!title) return;
+
+            const newTask = {
+                id: 'c_' + Date.now(),
+                title,
+                phase,
+                pic,
+                deadline,
+                budget,
+                actual: 0,
+                completed: false
+            };
+
+            appState.checklist.push(newTask);
+            saveState();
+            renderChecklist();
+            closeAddTaskModal();
+            e.target.reset();
+            showToast("Tugas baru berhasil ditambahkan!");
+        }
+
+        function populateCategoryDropdown() {
+            const select = document.getElementById('guest-category');
+            select.innerHTML = '';
+            appState.categories.forEach(cat => {
+                select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+        }
+
+        function getCategoryData(catId) {
+            return appState.categories.find(c => c.id === catId) || { name: 'Umum', color: '#6b7280' };
+        }
+
+        function handleAddGuest(e) {
+            e.preventDefault();
+            const name = document.getElementById('guest-name').value.trim();
+            const pax = parseInt(document.getElementById('guest-pax').value);
+            const category = document.getElementById('guest-category').value;
+
+            if(!name) return;
+
+            const newGuest = {
+                id: 'g_' + Date.now(),
+                name,
+                pax,
+                category,
+                tableId: null
+            };
+
+            appState.guests.push(newGuest);
+            saveState();
+            renderSeatingView();
+            e.target.reset();
+            showToast("Tamu berhasil ditambahkan");
+        }
+
+        function handleAddTable(e) {
+            e.preventDefault();
+            const name = document.getElementById('table-name').value.trim();
+            const capacity = parseInt(document.getElementById('table-capacity').value);
+
+            if(!name) return;
+
+            const newTable = {
+                id: 't_' + Date.now(),
+                name,
+                capacity,
+                seatedGuests: []
+            };
+
+            appState.tables.push(newTable);
+            saveState();
+            renderSeatingView();
+            e.target.reset();
+            showToast("Meja bundar berhasil ditambahkan");
+        }
+
+        function renderSeatingView() {
+            renderUnassignedGuests();
+            renderTables();
+        }
+
+        function renderUnassignedGuests() {
+            const container = document.getElementById('unassigned-guest-list');
+            const unassigned = appState.guests.filter(g => !g.tableId);
+            document.getElementById('unassigned-count').innerText = `${unassigned.length} Tamu`;
+            
+            container.innerHTML = '';
+
+            if(unassigned.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-400 italic py-2 text-center">Semua tamu sudah mendapatkan meja!</p>';
+                return;
+            }
+
+            unassigned.forEach(g => {
+                const cat = getCategoryData(g.category);
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200 group">
+                        <div class="truncate mr-2">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background-color: ${cat.color}"></span>
+                            <span class="text-xs font-semibold text-gray-800">${g.name}</span>
+                            <span class="text-[10px] text-gray-500 block">${cat.name} • ${g.pax} Pax</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="autoAssignGuest('${g.id}')" class="text-[10px] bg-wedding-600 hover:bg-wedding-700 text-white px-2 py-1 rounded transition-colors" title="Auto Tempatkan">
+                                Auto
+                            </button>
+                            <button onclick="openAssignModal('${g.id}')" class="text-[10px] bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded transition-colors" title="Pilih Meja">
+                                Pilih
+                            </button>
+                            <button onclick="showGuestQR('${g.id}')" class="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors" title="QR Code">
+                                <i class="fa-solid fa-qrcode"></i>
+                            </button>
+                            <button onclick="deleteGuest('${g.id}')" class="text-red-400 hover:text-red-600 px-1" title="Hapus Tamu">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderTables() {
+            const container = document.getElementById('floor-plan');
+            container.innerHTML = '';
+
+            let totalPax = 0;
+            let seatedPax = 0;
+            let totalCapacity = 0;
+
+            appState.guests.forEach(g => totalPax += g.pax);
+
+            appState.tables.forEach(table => {
+                totalCapacity += table.capacity;
+                let usedCapacity = 0;
+                let guestDetailsHtml = '';
+                let seatsHtml = '';
+                let seatColors = [];
+
+                table.seatedGuests.forEach(gId => {
+                    const g = appState.guests.find(guest => guest.id === gId);
+                    if(g) {
+                        usedCapacity += g.pax;
+                        seatedPax += g.pax;
+                        const catInfo = getCategoryData(g.category);
+                        
+                        guestDetailsHtml += `
+                            <div class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 group/row text-xs">
+                                <div class="truncate font-medium mr-1 flex items-center">
+                                    <span class="inline-block w-2 h-2 rounded-full mr-1.5 flex-shrink-0" style="background-color: ${catInfo.color}"></span>
+                                    <span class="truncate">${g.name}</span>
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-1 rounded">${g.pax}</span>
+                                    <button onclick="showGuestQR('${g.id}')" class="text-blue-500 hover:text-blue-700 opacity-80 sm:opacity-0 group-hover/row:opacity-100 transition-opacity" title="QR Code"><i class="fa-solid fa-qrcode text-xs"></i></button>
+                                    <button onclick="unseatGuest('${g.id}')" class="text-red-400 hover:text-red-600 opacity-80 sm:opacity-0 group-hover/row:opacity-100 transition-opacity" title="Lepas"><i class="fa-solid fa-xmark text-xs"></i></button>
+                                </div>
+                            </div>
+                        `;
+                        for(let i=0; i<g.pax; i++) {
+                            seatColors.push(catInfo.color);
+                        }
+                    }
+                });
+
+                const isFull = usedCapacity >= table.capacity;
+                const statusColor = isFull ? 'text-red-600' : (usedCapacity > 0 ? 'text-wedding-700' : 'text-emerald-600');
+                
+                for(let i=1; i<=table.capacity; i++) {
+                    const isOccupied = i <= usedCapacity;
+                    const bgColor = isOccupied ? (seatColors[i-1] || '#a87954') : '#eaddd7';
+                    const textColor = isOccupied ? 'white' : '#555';
+                    seatsHtml += `<div class="seat seat-${i} shadow-sm border border-white/50" style="background-color: ${bgColor}; color: ${textColor};">${i}</div>`;
+                }
+
+                container.innerHTML += `
+                    <div class="flex flex-col items-center group relative">
+                        <div class="absolute -top-2 -right-2 flex gap-1 z-10">
+                            <button onclick="showTableQR('${table.id}')" class="bg-white text-blue-600 border border-blue-200 rounded-full w-7 h-7 flex items-center justify-center shadow hover:bg-blue-50 transition-colors" title="QR Code Meja">
+                                <i class="fa-solid fa-qrcode text-xs"></i>
+                            </button>
+                            <button onclick="removeTable('${table.id}')" class="bg-white text-red-500 border border-red-200 rounded-full w-7 h-7 flex items-center justify-center shadow hover:bg-red-50 transition-colors" title="Hapus Meja">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="round-table">
+                            <div class="text-center z-10 bg-white/90 p-2 rounded-full w-[85px] h-[85px] flex flex-col justify-center border border-gray-100 shadow-sm">
+                                <span class="font-bold text-gray-800 text-xs truncate px-1">${table.name}</span>
+                                <span class="text-[10px] font-bold ${statusColor}">${usedCapacity}/${table.capacity} Pax</span>
+                            </div>
+                            ${seatsHtml}
+                        </div>
+
+                        <div class="mt-4 bg-white rounded-xl shadow-sm border border-wedding-200 w-full p-3 min-h-[60px]">
+                            ${guestDetailsHtml || '<p class="text-[11px] text-gray-400 text-center italic py-2">Meja masih kosong</p>'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Update stats counter
+            document.getElementById('stat-total-pax').innerText = totalPax;
+            document.getElementById('stat-seated-pax').innerText = seatedPax;
+            document.getElementById('stat-available-capacity').innerText = Math.max(0, totalCapacity - seatedPax);
+        }
+
+        function autoAssignGuest(guestId) {
+            const guest = appState.guests.find(g => g.id === guestId);
+            if(!guest) return;
+
+            const targetTable = appState.tables.find(t => {
+                let currentPax = 0;
+                t.seatedGuests.forEach(gId => {
+                    const g = appState.guests.find(x => x.id === gId);
+                    if(g) currentPax += g.pax;
+                });
+                return (t.capacity - currentPax) >= guest.pax;
+            });
+
+            if(targetTable) {
+                guest.tableId = targetTable.id;
+                targetTable.seatedGuests.push(guest.id);
+                saveState();
+                renderSeatingView();
+                showToast(`${guest.name} dimasukkan ke ${targetTable.name}`);
+            } else {
+                showToast("Tidak ada meja dengan sisa kapasitas mencukupi!", "error");
+            }
+        }
+
+        function autoAssignAllGuests() {
+            const unseated = appState.guests.filter(g => !g.tableId);
+            let assignedCount = 0;
+
+            unseated.forEach(guest => {
+                const targetTable = appState.tables.find(t => {
+                    let currentPax = 0;
+                    t.seatedGuests.forEach(gId => {
+                        const g = appState.guests.find(x => x.id === gId);
+                        if(g) currentPax += g.pax;
+                    });
+                    return (t.capacity - currentPax) >= guest.pax;
+                });
+
+                if(targetTable) {
+                    guest.tableId = targetTable.id;
+                    targetTable.seatedGuests.push(guest.id);
+                    assignedCount++;
+                }
+            });
+
+            saveState();
+            renderSeatingView();
+            showToast(`Otomatis menempatkan ${assignedCount} kelompok tamu!`);
+        }
+
+        function unseatGuest(guestId) {
+            const guest = appState.guests.find(g => g.id === guestId);
+            if(!guest) return;
+
+            if(guest.tableId) {
+                const table = appState.tables.find(t => t.id === guest.tableId);
+                if(table) {
+                    table.seatedGuests = table.seatedGuests.filter(id => id !== guestId);
+                }
+                guest.tableId = null;
+                saveState();
+                renderSeatingView();
+                showToast("Tamu dilepas dari meja");
+            }
+        }
+
+        function deleteGuest(guestId) {
+            unseatGuest(guestId);
+            appState.guests = appState.guests.filter(g => g.id !== guestId);
+            saveState();
+            renderSeatingView();
+            showToast("Tamu berhasil dihapus");
+        }
+
+        function removeTable(tableId) {
+            const table = appState.tables.find(t => t.id === tableId);
+            if(!table) return;
+
+            table.seatedGuests.forEach(gId => {
+                const g = appState.guests.find(x => x.id === gId);
+                if(g) g.tableId = null;
+            });
+
+            appState.tables = appState.tables.filter(t => t.id !== tableId);
+            saveState();
+            renderSeatingView();
+            showToast("Meja berhasil dihapus");
+        }
+
+        let selectedGuestForAssign = null;
+        function openAssignModal(guestId) {
+            selectedGuestForAssign = guestId;
+            const guest = appState.guests.find(g => g.id === guestId);
+            if(!guest) return;
+
+            document.getElementById('assign-guest-info').innerText = `${guest.name} (${guest.pax} Pax)`;
+            const container = document.getElementById('table-select-options');
+            container.innerHTML = '';
+
+            appState.tables.forEach(table => {
+                let usedPax = 0;
+                table.seatedGuests.forEach(gId => {
+                    const g = appState.guests.find(x => x.id === gId);
+                    if(g) usedPax += g.pax;
+                });
+
+                const spaceLeft = table.capacity - usedPax;
+                const canFit = spaceLeft >= guest.pax;
+
+                container.innerHTML += `
+                    <button onclick="assignGuestToTable('${table.id}')" ${!canFit ? 'disabled' : ''} class="w-full text-left p-2.5 rounded-lg border text-xs flex justify-between items-center ${
+                        canFit ? 'border-wedding-200 hover:bg-wedding-50 text-gray-800' : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                    }">
+                        <span class="font-bold">${table.name}</span>
+                        <span>Sisa ${spaceLeft} Kursi</span>
+                    </button>
+                `;
+            });
+
+            document.getElementById('modal-assign').classList.remove('hidden');
+            document.getElementById('modal-assign').classList.add('flex');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('modal-assign').classList.add('hidden');
+            document.getElementById('modal-assign').classList.remove('flex');
+        }
+
+        function assignGuestToTable(tableId) {
+            if(!selectedGuestForAssign) return;
+            const guest = appState.guests.find(g => g.id === selectedGuestForAssign);
+            const table = appState.tables.find(t => t.id === tableId);
+
+            if(guest && table) {
+                if(guest.tableId) {
+                    unseatGuest(guest.id);
+                }
+                guest.tableId = table.id;
+                table.seatedGuests.push(guest.id);
+                saveState();
+                renderSeatingView();
+                closeAssignModal();
+                showToast(`${guest.name} dialokasikan ke ${table.name}`);
+            }
+        }
+
+        function openCategoryModal() {
+            renderCategoryList();
+            document.getElementById('modal-category').classList.remove('hidden');
+            document.getElementById('modal-category').classList.add('flex');
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('modal-category').classList.add('hidden');
+            document.getElementById('modal-category').classList.remove('flex');
+            populateCategoryDropdown();
+        }
+
+        function renderCategoryList() {
+            const container = document.getElementById('category-list-container');
+            container.innerHTML = '';
+            appState.categories.forEach(cat => {
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full" style="background-color: ${cat.color}"></span>
+                            <span class="font-semibold text-gray-800">${cat.name}</span>
+                        </div>
+                        <button onclick="deleteCategory('${cat.id}')" class="text-red-400 hover:text-red-600 px-1">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function handleAddCategory(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-cat-name').value.trim();
+            const color = document.getElementById('new-cat-color').value;
+
+            if(!name) return;
+
+            appState.categories.push({
+                id: 'cat_' + Date.now(),
+                name,
+                color
+            });
+
+            saveState();
+            renderCategoryList();
+            populateCategoryDropdown();
+            e.target.reset();
+            showToast("Kategori baru ditambahkan");
+        }
+
+        function deleteCategory(catId) {
+            if(appState.categories.length <= 1) {
+                showToast("Minimal harus menyisakan 1 kategori!", "error");
+                return;
+            }
+            appState.categories = appState.categories.filter(c => c.id !== catId);
+            saveState();
+            renderCategoryList();
+            populateCategoryDropdown();
+            renderSeatingView();
+            showToast("Kategori dihapus");
+        }
+
+        function showGuestQR(guestId) {
+            const guest = appState.guests.find(g => g.id === guestId);
+            if(!guest) return;
+
+            const catInfo = getCategoryData(guest.category);
+            const table = guest.tableId ? appState.tables.find(t => t.id === guest.tableId) : null;
+            const tableName = table ? table.name : "Belum Duduk";
+
+            document.getElementById('qr-modal-title').innerText = "Tiket Access Tamu";
+            document.getElementById('qr-modal-subtitle').innerText = "Tunjukkan QR ini pada usher / penerima tamu";
+            document.getElementById('qr-card-name').innerText = guest.name;
+            document.getElementById('qr-card-category').innerText = catInfo.name;
+            document.getElementById('qr-card-pax').innerText = guest.pax;
+            document.getElementById('qr-card-table').innerText = tableName;
+
+            const payload = JSON.stringify({
+                id: guest.id,
+                name: guest.name,
+                pax: guest.pax,
+                cat: catInfo.name,
+                table: tableName
+            });
+
+            renderQRCode(payload);
+            openQRModal();
+        }
+
+        function showTableQR(tableId) {
+            const table = appState.tables.find(t => t.id === tableId);
+            if(!table) return;
+
+            document.getElementById('qr-modal-title').innerText = `Nomor ${table.name}`;
+            document.getElementById('qr-modal-subtitle').innerText = "Plang Kartu Meja Resepsi";
+            document.getElementById('qr-card-name').innerText = `Meja ${table.name}`;
+            document.getElementById('qr-card-category').innerText = `Kapasitas Total: ${table.capacity} Pax`;
+            document.getElementById('qr-card-pax').innerText = table.seatedGuests.length;
+            document.getElementById('qr-card-table').innerText = table.name;
+
+            const payload = JSON.stringify({
+                type: 'TABLE',
+                tableId: table.id,
+                tableName: table.name,
+                capacity: table.capacity
+            });
+
+            renderQRCode(payload);
+            openQRModal();
+        }
+
+        function renderQRCode(textData) {
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = '';
+            
+            // Primary method: Uses QRCode library if available
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(container, {
+                        text: textData,
+                        width: 160,
+                        height: 160,
+                        colorDark: "#5c3e30",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                    return;
+                } catch(err) {
+                    console.warn("QRCode JS error, switching to fallback renderer:", err);
+                }
+            }
+
+            // Reliable Fallback method using QR API service to prevent script failures
+            const encoded = encodeURIComponent(textData);
+            container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encoded}" alt="QR Code" class="w-40 h-40 object-contain mx-auto border rounded p-1" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-xs text-wedding-800 p-2 font-mono break-all bg-wedding-100 rounded\'>ID Code:<br>${textData}</div>';"/>`;
+        }
+
+        function openQRModal() {
+            document.getElementById('qr-modal').classList.remove('hidden');
+            document.getElementById('qr-modal').classList.add('flex');
+        }
+
+        function closeQRModal() {
+            document.getElementById('modal-qr').classList.add('hidden');
+            document.getElementById('modal-qr').classList.remove('flex');
+        }
+
+        function printQRCard() {
+            const printContent = document.getElementById('printable-qr-card').outerHTML;
+            const printWindow = window.open('', '_blank', 'width=650,height=750');
+            if (!printWindow) {
+                showToast("Pop-up diblokir browser. Izinkan pop-up untuk mencetak PDF.", "error");
+                return;
+            }
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Cetak Tiket QR Code</title>
+                    <script src="https://cdn.tailwindcss.com">\x3C/script>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap');
+                        body { font-family: 'Inter', sans-serif; padding: 24px; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fdfbf7; }
+                    </style>
+                </head>
+                <body>
+                    <div style="width: 360px;">
+                        ${printContent}
+                    </div>
+                    <script>
+                        setTimeout(() => { window.print(); window.close(); }, 600);
+                    \x3C/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        window.onload = function() {
+            if(appState.weddingDate) {
+                document.getElementById('wedding-date').value = appState.weddingDate;
+            }
+            calculateCountdown();
+            renderChecklist();
+            populateCategoryDropdown();
+            renderSeatingView();
+        };
+    </script>
+</body>
+</html>
